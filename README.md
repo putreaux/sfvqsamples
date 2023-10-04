@@ -11,4 +11,4 @@ python playsamples.py YOUR_PATH_HERE
 python playsamples.py /work/t405/T40571/sounds/
 
 
-This will open a GUI where you can click on the canvas element which shows the codebook index as the x coordinate of the mouse. Clicking the canvas at that x coordinate plays the speech sample which was mapped to the corresponding codebook index in the sfvq, which was trained on the TIMIT dataset for both males and females.
+This will open a GUI where you can click on the canvas element which shows the codebook indices as the x and y coordinates of the mouse. Clicking the canvas with the left mouse button plays a random speech sample at that x coordinate which was mapped to the corresponding codebook index in the sfvq. Clicking the canvas with the right mouse button plays a random speech sample at the y coordinate. The background image represents the euclidean distances between the codebooks at indices x and y. 
