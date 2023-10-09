@@ -33,6 +33,14 @@ distmatrixm = np.load('distancesm.npy')
 
 current_samples = data
 
+sound_ind_x = 0
+sound_ind_y = 0
+
+current_x = 0
+current_y = 0
+
+vary = True 
+
 distmatrices = [distmatrix, distmatrixf, distmatrixm]
 datasets = [data, data_f, data_m]
 
@@ -59,17 +67,25 @@ def dialect_info(d):
 	return dialects[d]
 
 
-def display_md(text, textfield, ind):
+def display_md(text, textfield, ind, numsounds):
+	index = 0
 	textfield.delete(1.0, tk.END)
+	if text[0] == "X":
+		index = str(sound_ind_x+1)
+	if text[0] == "Y":
+		index = str(sound_ind_y+1)
 	textfield.insert(tk.END, "Codebook index: {},\n".format(ind))
-	textfield.insert(tk.END, text)
+	textfield.insert(tk.END, text + ", sample {} / {}".format(index, numsounds))
 
 
-def play_sound(index):
+def play_sound(index, sound_ind):
 	try:
 		sound_paths = current_samples[str(index)]
-		ind = random.randint(0, len(sound_paths)-1)
-		random_sound = sound_paths[ind]
+		s_ind = sound_ind % len(sound_paths)
+		random_sound = sound_paths[s_ind]
+		if button4["state"] == "disabled":
+			button4["state"] = "normal"
+			button5["state"] = "normal"
 	except KeyError:
 		return "No sample at this codebook index."
 	sound_path = random_sound.replace("/work/t405/T40571/sounds/", timit_path)
@@ -85,19 +101,62 @@ def play_sound(index):
 	attrs_final = copy(attrs[0])
 	attrs_final['height'] = height
 	attrs_final['dialect'] = dialect
-	return str(attrs_final)
+	return str(attrs_final), s_ind, len(sound_paths)
 	
 
 T = tk.Text(root, height = 5, width = 80)
-T.insert(tk.END, "Click on the canvas above at any coordinate you like to play audio and get speaker metadata. Left mouse button plays a sample from x coordinate and right mouse button plays a sample from the y coordinate.")
+T.insert(tk.END, "Click on the canvas above at any coordinate you like to choose indices (x, y) to compare. After this, use the 'Play Next Sample' buttons to play samples from the coordinates. If the 'Play Same Sample' checkmark is checked, the samples played on x and y will stay the same.")
+
+def mouse_pos(event):
+	xc = math.floor(event.x/2)
+	yc = math.floor((event.y)*(512/476)/2)
+	w.itemconfigure(tag, text="Codebook index X: {}, Y: {}\nDistance between codebooks: {}".format(xc, yc, distance(xc, yc)))
+	return xc, yc
 
 def get_coords(event):
-	txt = "X: " + play_sound(math.floor(event.x/2))
-	display_md(txt, T, math.floor(event.x/2))
+	global sound_ind_x, sound_ind_y, current_x, current_y
+	sound_ind_x = 0
+	sound_ind_y = 0
+	w.delete("marker")
+	md, ind, n = play_sound(math.floor(event.x / 2), sound_ind_x)
+	txt = "X: " + md
+	display_md(txt, T, math.floor(event.x/2), n)
+	w.create_oval(max(0,event.x-3), max(0,event.y-3), event.x+3, event.y+3, fill='black', stipple="gray50", tags="marker")
+	xp, yp = mouse_pos(event)
+	current_x = xp
+	current_y = yp
 
 def play_correlated(event):
-	txt = "Y: " + play_sound(math.floor((event.y)*(512/476)/2))
-	display_md(txt, T, math.floor((event.y)*(512/476)/2))
+	global sound_ind_x, sound_ind_y, current_x, current_y
+	sound_ind_x = 0
+	sound_ind_y = 0
+	w.delete("marker")
+	md, ind, n = play_sound(math.floor((event.y)*(512/476)/2), sound_ind_y)
+	txt = "Y: " + md
+	display_md(txt, T, math.floor((event.y)*(512/476)/2), n)
+	w.create_oval(max(0, event.x - 3), max(0, event.y - 3), event.x + 3, event.y + 3, fill='black', stipple="gray50", tags="marker")
+	xp, yp = mouse_pos(event)
+	current_x = xp
+	current_y = yp
+
+def play_from_index(x, y, coord):
+	global sound_ind_x, sound_ind_y
+	print(sound_ind_x, sound_ind_y)
+	if coord == "x":
+		md, ind, n = play_sound(x, sound_ind_x)
+		sound_ind_x = ind+int(vary)
+		txt = "X: " + md
+		display_md(txt, T, math.floor(x), n)
+		print("x, " , sound_ind_x, sound_ind_y)
+	if coord == "y":
+		md2, ind2, n2 = play_sound(y, sound_ind_y)
+		txt = "Y: " + md2
+		sound_ind_y = ind2+int(vary)
+		display_md(txt, T, math.floor(y), n2)
+		print("y, ", sound_ind_x, sound_ind_y)
+	w.itemconfigure(tag, text="Codebook index X: {}, Y: {}\nDistance between codebooks: {}".format(x, y, distance(x, y)))
+	print("nyt??", sound_ind_x, sound_ind_y)
+
 
 def distance(x, y):
 	dmatrix = distmatrices[datasets.index(current_samples)]
@@ -106,18 +165,24 @@ def distance(x, y):
 	except IndexError:
 		d = np.nan
 	return d
-	
-def mouse_pos(event):
-	xc = math.floor(event.x/2)
-	yc = math.floor((event.y)*(512/476)/2)
-	w.itemconfigure(tag, text="Codebook index X: {}, Y: {}\nDistance between codebooks: {}".format(xc, yc, distance(xc, yc)))
+
 
 def change_bg(image, samples):
 	global current_samples, tag
 	w.create_image(0, 0, image=image,
 				 anchor="nw")
 	tag = w.create_text(220, 10, text="Codebook index: X: , Y: \nDistance between codebooks:", anchor="nw", font="Arial 11 bold")
+	button4["state"] = "disabled"
+	button5["state"] = "disabled"
 	current_samples = samples
+
+
+var = tk.IntVar()
+
+def toggle_freeze():
+	global vary
+	vary = 1-bool(var.get())
+	
 	
 
 w = tk.Canvas(root, width=512, height=476, bg='skyblue')
@@ -129,16 +194,6 @@ bg_m = tk.PhotoImage(file = "distscb_m.png")
 w.create_image(0, 0, image=bg_both,
 			   anchor="nw")
 
-button1=tk.Button(root, text="Male", command=lambda: change_bg(bg_m, data_m))
-button1.pack(side=tk.BOTTOM, fill="both", expand=False)
-button2=tk.Button(root, text="Female", command=lambda: change_bg(bg_f, data_f))
-button2.pack(side=tk.BOTTOM, fill="both", expand=False)
-button3=tk.Button(root, text="Both", command=lambda: change_bg(bg_both, data))
-button3.pack(side=tk.BOTTOM, fill="both", expand=False)
-
-tag = w.create_text(220, 10, text="Codebook index: X: , Y: \nDistance between codebooks:", anchor="nw", font="Arial 11 bold")
-
-
 
 w.bind('<Button-1>', get_coords)
 w.bind('<Button-3>', play_correlated)
@@ -146,6 +201,36 @@ w.bind("<Motion>", mouse_pos)
 
 w.pack()
 T.pack()
+
+buttonframe = tk.Frame(root)
+buttonframe.pack(side=tk.BOTTOM, pady=10)
+
+button1=tk.Button(buttonframe, bg="#7ad9e6", text="Male", command=lambda: change_bg(bg_m, data_m))
+button1.pack(side=tk.LEFT)
+button2=tk.Button(buttonframe, bg="#e89287", text="Female", command=lambda: change_bg(bg_f, data_f))
+button2.pack(side=tk.LEFT)
+button3=tk.Button(buttonframe, bg="#dcb0eb", text="Both", command=lambda: change_bg(bg_both, data))
+button3.pack(side=tk.LEFT)
+
+buttonframe2 = tk.Frame(root)
+buttonframe2.pack(side=tk.BOTTOM)
+
+
+button4=tk.Button(buttonframe2, text="Play Next Sample (x)", command=lambda: play_from_index(current_x, current_y, "x"))
+button4.pack(side=tk.LEFT)
+button4["state"] = "disabled"
+button5=tk.Button(buttonframe2, text="Play Next Sample (y)", command=lambda: play_from_index(current_x, current_y, "y"))
+button5.pack(side=tk.LEFT)
+button5["state"] = "disabled"
+check=tk.Checkbutton(buttonframe2, text="Play Same Samples", variable=var, onvalue=1, offvalue=0, command=toggle_freeze)
+check.pack(side=tk.RIGHT)
+
+tag = w.create_text(220, 10, text="Codebook index: X: , Y: \nDistance between codebooks:", anchor="nw", font="Arial 11 bold")
+
+
+
+
+
 
 
 	
