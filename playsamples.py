@@ -22,16 +22,44 @@ samples_f = open('codebooksamples_f.json')
 samples_m = open('codebooksamples_m.json')
 metadata = open('speakerdata.json')
 
+# 6 and 4 bit samples, m and f, euclidean
+
+samples_4bit_f = open('codebooksamples_4f.json')
+samples_4bit_m = open('codebooksamples_4m.json')
+samples_6bit_f = open('codebooksamples_6f.json')
+samples_6bit_m = open('codebooksamples_6m.json')
+
+# 6 and 4 bit samples, m and f, cosine
+
+'''samples_4bit_f_c = open('codebooksamples_4fc.json')
+samples_4bit_m_c = open('codebooksamples_4mc.json')
+samples_6bit_f_c = open('codebooksamples_6fc.json')
+samples_6bit_m_c = open('codebooksamples_6mc.json')
+'''
+
 data = json.load(samples)
 data_f = json.load(samples_f)
 data_m = json.load(samples_m)
+data_f4 = json.load(samples_4bit_f)
+data_m4 = json.load(samples_4bit_m)
+data_f6 = json.load(samples_6bit_f)
+data_m6 = json.load(samples_6bit_m)
 md = json.load(metadata)
 
 distmatrix = np.load('distancesboth.npy')
 distmatrixf = np.load('distancesf.npy')
 distmatrixm = np.load('distancesm.npy')
 
+distmatrixf6 = np.load('distancesf6.npy')
+distmatrixm6 = np.load('distancesm6.npy')
+
+distmatrixf4 = np.load('distancesf4.npy')
+distmatrixm4 = np.load('distancesm4.npy')
+
 current_samples = data
+current_index = 0
+
+current_factor = 1 # for correct indexing at lower bitrates
 
 sound_ind_x = 0
 sound_ind_y = 0
@@ -41,7 +69,7 @@ current_y = 0
 
 vary = True 
 
-distmatrices = [distmatrix, distmatrixf, distmatrixm]
+distmatrices = [distmatrix, distmatrixf, distmatrixm, distmatrixf6, distmatrixm6, distmatrixf4, distmatrixm4]
 datasets = [data, data_f, data_m]
 
 timit_path = sys.argv[1]
@@ -49,7 +77,7 @@ timit_path = sys.argv[1]
 
 root = tk.Tk()
  
-root.geometry("640x640")
+root.geometry("640x680")
 root.title("Play speech samples from TIMIT")
 
 
@@ -81,14 +109,15 @@ def display_md(text, textfield, ind, numsounds):
 def play_sound(index, sound_ind):
 	try:
 		sound_paths = current_samples[str(index)]
-		s_ind = sound_ind % len(sound_paths)
-		random_sound = sound_paths[s_ind]
+		s_ind = sound_ind % (len(sound_paths))
+		timit_ind = sound_paths[s_ind].index("timit/")
+		random_sound = sound_paths[s_ind][timit_ind:]
 		if button4["state"] == "disabled":
 			button4["state"] = "normal"
 			button5["state"] = "normal"
 	except KeyError:
-		return "No sample at this codebook index."
-	sound_path = random_sound.replace("/work/t405/T40571/sounds/", timit_path)
+		return "No sample at this codebook index.", 0, 0
+	sound_path = timit_path+random_sound
 	signal, fs = torchaudio.load(sound_path)
 	signal = signal.numpy().flatten()
 	sd.play(signal, fs)
@@ -101,15 +130,15 @@ def play_sound(index, sound_ind):
 	attrs_final = copy(attrs[0])
 	attrs_final['height'] = height
 	attrs_final['dialect'] = dialect
-	return str(attrs_final), s_ind, len(sound_paths)
+	return str(attrs_final), s_ind+int(vary), len(sound_paths)
 	
 
 T = tk.Text(root, height = 5, width = 80)
 T.insert(tk.END, "Click on the canvas above at any coordinate you like to choose indices (x, y) to compare. After this, use the 'Play Next Sample' buttons to play samples from the coordinates. If the 'Play Same Sample' checkmark is checked, the samples played on x and y will stay the same.")
 
 def mouse_pos(event):
-	xc = math.floor(event.x/2)
-	yc = math.floor((event.y)*(512/476)/2)
+	xc = math.floor(event.x/(2**current_factor))
+	yc = math.floor((event.y)*(512/476)/(2**current_factor))
 	w.itemconfigure(tag, text="Codebook index X: {}, Y: {}\nDistance between codebooks: {}".format(xc, yc, distance(xc, yc)))
 	return xc, yc
 
@@ -118,9 +147,10 @@ def get_coords(event):
 	sound_ind_x = 0
 	sound_ind_y = 0
 	w.delete("marker")
-	md, ind, n = play_sound(math.floor(event.x / 2), sound_ind_x)
+	event_ind = math.floor(event.x / (2**current_factor))
+	md, ind, n = play_sound(event_ind, sound_ind_x)
 	txt = "X: " + md
-	display_md(txt, T, math.floor(event.x/2), n)
+	display_md(txt, T, math.floor(event.x/(2**current_factor)), n)
 	w.create_oval(max(0,event.x-3), max(0,event.y-3), event.x+3, event.y+3, fill='black', stipple="gray50", tags="marker")
 	xp, yp = mouse_pos(event)
 	current_x = xp
@@ -131,9 +161,9 @@ def play_correlated(event):
 	sound_ind_x = 0
 	sound_ind_y = 0
 	w.delete("marker")
-	md, ind, n = play_sound(math.floor((event.y)*(512/476)/2), sound_ind_y)
+	md, ind, n = play_sound(math.floor((event.y)*(512/476)/(2**current_factor)), sound_ind_y)
 	txt = "Y: " + md
-	display_md(txt, T, math.floor((event.y)*(512/476)/2), n)
+	display_md(txt, T, math.floor((event.y)*(512/476)/(2**current_factor)), n)
 	w.create_oval(max(0, event.x - 3), max(0, event.y - 3), event.x + 3, event.y + 3, fill='black', stipple="gray50", tags="marker")
 	xp, yp = mouse_pos(event)
 	current_x = xp
@@ -141,25 +171,20 @@ def play_correlated(event):
 
 def play_from_index(x, y, coord):
 	global sound_ind_x, sound_ind_y
-	print(sound_ind_x, sound_ind_y)
 	if coord == "x":
 		md, ind, n = play_sound(x, sound_ind_x)
-		sound_ind_x = ind+int(vary)
+		sound_ind_x = ind
 		txt = "X: " + md
 		display_md(txt, T, math.floor(x), n)
-		print("x, " , sound_ind_x, sound_ind_y)
 	if coord == "y":
 		md2, ind2, n2 = play_sound(y, sound_ind_y)
 		txt = "Y: " + md2
-		sound_ind_y = ind2+int(vary)
+		sound_ind_y = ind2
 		display_md(txt, T, math.floor(y), n2)
-		print("y, ", sound_ind_x, sound_ind_y)
 	w.itemconfigure(tag, text="Codebook index X: {}, Y: {}\nDistance between codebooks: {}".format(x, y, distance(x, y)))
-	print("nyt??", sound_ind_x, sound_ind_y)
-
 
 def distance(x, y):
-	dmatrix = distmatrices[datasets.index(current_samples)]
+	dmatrix = distmatrices[current_index]
 	try:
 		d = "%.2f" % round(dmatrix[x][y], 2)
 	except IndexError:
@@ -167,8 +192,11 @@ def distance(x, y):
 	return d
 
 
-def change_bg(image, samples):
-	global current_samples, tag
+def change_bg(image, samples, factor, index):
+	global current_samples, tag, current_factor, current_index
+	current_factor = factor
+	current_index = index
+	w.delete('all')
 	w.create_image(0, 0, image=image,
 				 anchor="nw")
 	tag = w.create_text(220, 10, text="Codebook index: X: , Y: \nDistance between codebooks:", anchor="nw", font="Arial 11 bold")
@@ -191,6 +219,12 @@ bg_both = tk.PhotoImage(file = "distscb.png")
 bg_f = tk.PhotoImage(file = "distscb_f.png")
 bg_m = tk.PhotoImage(file = "distscb_m.png")
 
+bg_f6 = tk.PhotoImage(file = "distscbf6.png")
+bg_m6 = tk.PhotoImage(file = "distscbm6.png")
+
+bg_f4 = tk.PhotoImage(file = "distscbf4.png")
+bg_m4 = tk.PhotoImage(file = "distscbm4.png")
+
 w.create_image(0, 0, image=bg_both,
 			   anchor="nw")
 
@@ -203,15 +237,39 @@ w.pack()
 T.pack()
 
 buttonframe = tk.Frame(root)
-buttonframe.pack(side=tk.BOTTOM, pady=10)
+buttonframe.pack(side=tk.BOTTOM, pady=4)
 
-button1=tk.Button(buttonframe, bg="#7ad9e6", text="Male", command=lambda: change_bg(bg_m, data_m))
+button1=tk.Button(buttonframe, bg="#7ad9e6", text="Male", command=lambda: change_bg(bg_m, data_m, 1, 1))
 button1.pack(side=tk.LEFT)
-button2=tk.Button(buttonframe, bg="#e89287", text="Female", command=lambda: change_bg(bg_f, data_f))
+button2=tk.Button(buttonframe, bg="#e89287", text="Female", command=lambda: change_bg(bg_f, data_f, 1, 2))
 button2.pack(side=tk.LEFT)
-button3=tk.Button(buttonframe, bg="#dcb0eb", text="Both", command=lambda: change_bg(bg_both, data))
+button3=tk.Button(buttonframe, bg="#dcb0eb", text="Both", command=lambda: change_bg(bg_both, data, 1, 0))
 button3.pack(side=tk.LEFT)
 
+buttonframe1 = tk.Frame(root)
+buttonframe1.pack(side=tk.BOTTOM, pady=2)
+
+button11=tk.Button(buttonframe1, bg="#7ad9e6", text="Male 4 bit", command=lambda: change_bg(bg_m4, data_m4, 5, 6))
+button11.pack(side=tk.LEFT)
+button12=tk.Button(buttonframe1, bg="#7ad9e6", text="Male 6 bit", command=lambda: change_bg(bg_m6, data_m6, 3, 4))
+button12.pack(side=tk.LEFT)
+button21=tk.Button(buttonframe1, bg="#e89287", text="Female 4 bit", command=lambda: change_bg(bg_f4, data_f4, 5, 5))
+button21.pack(side=tk.LEFT)
+button22=tk.Button(buttonframe1, bg="#e89287", text="Female 6 bit", command=lambda: change_bg(bg_f6, data_f6, 3, 3))
+button22.pack(side=tk.LEFT)
+
+'''buttonframe11 = tk.Frame(root)
+buttonframe11.pack(side=tk.BOTTOM, pady=4)
+
+button31=tk.Button(buttonframe11, bg="#7ad9e6", text="Male 4 bit cosine", command=lambda: change_bg(bg_m4c, data_m4c, 5, 0))
+button31.pack(side=tk.LEFT)
+button32=tk.Button(buttonframe11, bg="#7ad9e6", text="Male 6 bit cosine", command=lambda: change_bg(bg_m6c, data_m6c, 3, 0))
+button32.pack(side=tk.LEFT)
+button41=tk.Button(buttonframe11, bg="#e89287", text="Female 4 bit cosine", command=lambda: change_bg(bg_f4c, data_f4c, 5, 0))
+button41.pack(side=tk.LEFT)
+button42=tk.Button(buttonframe11, bg="#e89287", text="Female 6 bit cosine", command=lambda: change_bg(bg_f6c, data_f6c, 3, 0))
+button42.pack(side=tk.LEFT)
+'''
 buttonframe2 = tk.Frame(root)
 buttonframe2.pack(side=tk.BOTTOM)
 
