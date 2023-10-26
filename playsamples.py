@@ -35,6 +35,8 @@ samples_4bit_f_c = open('codebooksamples_4fc.json')
 samples_4bit_m_c = open('codebooksamples_4mc.json')
 samples_6bit_f_c = open('codebooksamples_6fc.json')
 samples_6bit_m_c = open('codebooksamples_6mc.json')
+samples_8bit_f_c = open('codebooksamples_8fc.json')
+samples_8bit_m_c = open('codebooksamples_8mc.json')
 
 data = json.load(samples)
 data_f = json.load(samples_f)
@@ -47,6 +49,8 @@ data_f4c = json.load(samples_4bit_f_c)
 data_m4c = json.load(samples_4bit_m_c)
 data_f6c = json.load(samples_6bit_f_c)
 data_m6c = json.load(samples_6bit_m_c)
+data_f8c = json.load(samples_8bit_f_c)
+data_m8c = json.load(samples_8bit_m_c)
 md = json.load(metadata)
 
 distmatrix = np.load('distancesboth.npy')
@@ -58,6 +62,9 @@ distmatrixm6 = np.load('distancesm6.npy')
 
 distmatrixf4 = np.load('distancesf4.npy')
 distmatrixm4 = np.load('distancesm4.npy')
+
+distmatrixf8c = np.load('distancesf8c.npy')
+distmatrixm8c = np.load('distancesm8c.npy')
 
 distmatrixf6c = np.load('distancesf6c.npy')
 distmatrixm6c = np.load('distancesm6c.npy')
@@ -78,7 +85,7 @@ current_y = 0
 
 vary = True 
 
-distmatrices = [distmatrix, distmatrixf, distmatrixm, distmatrixf6, distmatrixm6, distmatrixf4, distmatrixm4, distmatrixf6c, distmatrixm6c, distmatrixf4c, distmatrixm4c]
+distmatrices = [distmatrix, distmatrixf, distmatrixm, distmatrixf6, distmatrixm6, distmatrixf4, distmatrixm4, distmatrixf6c, distmatrixm6c, distmatrixf4c, distmatrixm4c, distmatrixf8c, distmatrixm8c]
 datasets = [data, data_f, data_m]
 
 timit_path = sys.argv[1]
@@ -86,7 +93,7 @@ timit_path = sys.argv[1]
 
 root = tk.Tk()
  
-root.geometry("640x680")
+root.geometry("680x680")
 root.title("Play speech samples from TIMIT")
 
 
@@ -228,6 +235,9 @@ bg_both = tk.PhotoImage(file = "distscb.png")
 bg_f = tk.PhotoImage(file = "distscb_f.png")
 bg_m = tk.PhotoImage(file = "distscb_m.png")
 
+bg_f8c = tk.PhotoImage(file = "distscbf8c.png")
+bg_m8c = tk.PhotoImage(file = "distscbm8c.png")
+
 bg_f6 = tk.PhotoImage(file = "distscbf6.png")
 bg_m6 = tk.PhotoImage(file = "distscbm6.png")
 
@@ -240,6 +250,11 @@ bg_m6c = tk.PhotoImage(file = "distscbm6c.png")
 bg_f4c = tk.PhotoImage(file = "distscbf4c.png")
 bg_m4c = tk.PhotoImage(file = "distscbm4c.png")
 
+'''images = [bg_both, bg_f, bg_m, bg_f8c, bg_m8c, bg_f6, bg_m6, bg_f4, bg_m4, bg_f6c, bg_m6c, bg_f4c, bg_m4c]
+
+for image in images:
+	image = image.resize((512, 512))
+'''
 w.create_image(0, 0, image=bg_both,
 			   anchor="nw")
 
@@ -254,36 +269,41 @@ T.pack()
 buttonframe = tk.Frame(root)
 buttonframe.pack(side=tk.BOTTOM, pady=2)
 
-button1=tk.Button(buttonframe, bg="#7ad9e6", text="Male 8 bit", command=lambda: change_bg(bg_m, data_m, 1, 1))
-button1.pack(side=tk.LEFT)
-button2=tk.Button(buttonframe, bg="#e89287", text="Female 8 bit", command=lambda: change_bg(bg_f, data_f, 1, 2))
-button2.pack(side=tk.LEFT)
-button3=tk.Button(buttonframe, bg="#dcb0eb", text="Both 8 bit", command=lambda: change_bg(bg_both, data, 1, 0))
+
+button3=tk.Button(buttonframe, bg="#dcb0eb", text="Both 8 bit euc", command=lambda: change_bg(bg_both, data, 1, 0))
 button3.pack(side=tk.LEFT)
 
 buttonframe1 = tk.Frame(root)
 buttonframe1.pack(side=tk.BOTTOM, pady=2)
 
-button11=tk.Button(buttonframe1, bg="#7ad9e6", text="Male 4 bit", command=lambda: change_bg(bg_m4, data_m4, 5, 6))
+button11=tk.Button(buttonframe1, bg="#7ad9e6", text="Male 4 bit euc", command=lambda: change_bg(bg_m4, data_m4, 5, 6))
 button11.pack(side=tk.LEFT)
-button12=tk.Button(buttonframe1, bg="#7ad9e6", text="Male 6 bit", command=lambda: change_bg(bg_m6, data_m6, 3, 4))
+button12=tk.Button(buttonframe1, bg="#7ad9e6", text="Male 6 bit euc", command=lambda: change_bg(bg_m6, data_m6, 3, 4))
 button12.pack(side=tk.LEFT)
-button21=tk.Button(buttonframe1, bg="#e89287", text="Female 4 bit", command=lambda: change_bg(bg_f4, data_f4, 5, 5))
+button1=tk.Button(buttonframe1, bg="#7ad9e6", text="Male 8 bit euc", command=lambda: change_bg(bg_m, data_m, 1, 2))
+button1.pack(side=tk.LEFT)
+button21=tk.Button(buttonframe1, bg="#e89287", text="Female 4 bit euc", command=lambda: change_bg(bg_f4, data_f4, 5, 5))
 button21.pack(side=tk.LEFT)
-button22=tk.Button(buttonframe1, bg="#e89287", text="Female 6 bit", command=lambda: change_bg(bg_f6, data_f6, 3, 3))
+button22=tk.Button(buttonframe1, bg="#e89287", text="Female 6 bit euc", command=lambda: change_bg(bg_f6, data_f6, 3, 3))
 button22.pack(side=tk.LEFT)
+button2=tk.Button(buttonframe1, bg="#e89287", text="Female 8 bit euc", command=lambda: change_bg(bg_f, data_f, 1, 1))
+button2.pack(side=tk.LEFT)
 
 buttonframe11 = tk.Frame(root)
 buttonframe11.pack(side=tk.BOTTOM, pady=2)
 
-button31=tk.Button(buttonframe11, bg="#7ad9e6", text="Male 4 bit cosine", command=lambda: change_bg(bg_m4c, data_m4c, 5, 10))
+button31=tk.Button(buttonframe11, bg="#7ad9e6", text="Male 4 bit cos", command=lambda: change_bg(bg_m4c, data_m4c, 5, 10))
 button31.pack(side=tk.LEFT)
-button32=tk.Button(buttonframe11, bg="#7ad9e6", text="Male 6 bit cosine", command=lambda: change_bg(bg_m6c, data_m6c, 3, 8))
+button32=tk.Button(buttonframe11, bg="#7ad9e6", text="Male 6 bit cos", command=lambda: change_bg(bg_m6c, data_m6c, 3, 8))
 button32.pack(side=tk.LEFT)
-button41=tk.Button(buttonframe11, bg="#e89287", text="Female 4 bit cosine", command=lambda: change_bg(bg_f4c, data_f4c, 5, 9))
+button51=tk.Button(buttonframe11, bg="#7ad9e6", text="Male 8 bit cos", command=lambda: change_bg(bg_m8c, data_m8c, 1, 12))
+button51.pack(side=tk.LEFT)
+button41=tk.Button(buttonframe11, bg="#e89287", text="Female 4 bit cos", command=lambda: change_bg(bg_f4c, data_f4c, 5, 9))
 button41.pack(side=tk.LEFT)
-button42=tk.Button(buttonframe11, bg="#e89287", text="Female 6 bit cosine", command=lambda: change_bg(bg_f6c, data_f6c, 3, 7))
+button42=tk.Button(buttonframe11, bg="#e89287", text="Female 6 bit cos", command=lambda: change_bg(bg_f6c, data_f6c, 3, 7))
 button42.pack(side=tk.LEFT)
+button52=tk.Button(buttonframe11, bg="#e89287", text="Female 8 bit cos", command=lambda: change_bg(bg_f8c, data_f8c, 1, 11))
+button52.pack(side=tk.LEFT)
 
 buttonframe2 = tk.Frame(root)
 buttonframe2.pack(side=tk.BOTTOM)
@@ -304,7 +324,7 @@ tag = w.create_text(220, 10, text="Codebook index: X: , Y: \nDistance between co
 
 
 
-
+# 8 bit male & female euc, 8 bit male & female cos etöisyydet bugaa.
 
 	
 
